@@ -1,0 +1,143 @@
+---
+- name: Install and Configure Jenkins Server
+  hosts: jenkins
+  become: yes
+  vars:
+    docker_apt_key_url: https://download.docker.com/linux/ubuntu/gpg
+    docker_apt_repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
+    jenkins_apt_key_url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+    jenkins_apt_repo: deb https://pkg.jenkins.io/debian-stable binary/
+    kubernetes_apt_key_url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    kubernetes_apt_repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required system packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg-agent
+          - software-properties-common
+          - python3-pip
+        state: present
+
+    # Install Java
+    - name: Install OpenJDK 17
+      apt:
+        name: openjdk-17-jdk
+        state: present
+
+    # Configure Docker repository
+    - name: Add Docker GPG key
+      apt_key:
+        url: "{{ docker_apt_key_url }}"
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "{{ docker_apt_repo }}"
+        state: present
+
+    # Install Docker
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    # Configure Jenkins repository
+    - name: Add Jenkins GPG key
+      apt_key:
+        url: "{{ jenkins_apt_key_url }}"
+        state: present
+
+    - name: Add Jenkins repository
+      apt_repository:
+        repo: "{{ jenkins_apt_repo }}"
+        state: present
+
+    # Install Jenkins
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+
+    - name: Create Jenkins user group
+      group:
+        name: jenkins
+        state: present
+
+    - name: Add Jenkins user to Docker group
+      user:
+        name: jenkins
+        groups: docker
+        append: yes
+
+    - name: Start and enable Jenkins service
+      service:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    # Configure kubectl repository
+    - name: Add Kubernetes GPG key
+      apt_key:
+        url: "{{ kubernetes_apt_key_url }}"
+        state: present
+
+    - name: Add Kubernetes repository
+      apt_repository:
+        repo: "{{ kubernetes_apt_repo }}"
+        state: present
+
+    - name: Install kubectl
+      apt:
+        name: kubectl
+        state: present
+
+    # Install Maven
+    - name: Install Maven
+      apt:
+        name: maven
+        state: present
+
+    # Install AWS CLI
+    - name: Install AWS CLI via pip
+      pip:
+        name: awscli
+        state: present
+
+    # Get initial Jenkins admin password
+    - name: Get Jenkins initial admin password
+      shell: cat /var/lib/jenkins/secrets/initialAdminPassword
+      register: jenkins_password
+      changed_when: false
+
+    - name: Display Jenkins initial admin password
+      debug:
+        msg: "Jenkins initial admin password: {{ jenkins_password.stdout }}"
+
+    # Restart services
+    - name: Restart Docker to apply group changes
+      service:
+        name: docker
+        state: restarted
+
+    - name: Restart Jenkins
+      service:
+        name: jenkins
+        state: restarted

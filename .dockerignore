@@ -1,0 +1,27 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Build files
+target/
+!target/*.jar
+build/
+out/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+
+# Maven wrapper
+.mvn/wrapper/maven-wrapper.jar
+
+# Misc
+README.md
+*.md
